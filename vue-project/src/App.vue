@@ -10,9 +10,9 @@
   <Personal-Profile/>
 </template>
 
- <script setup>
+<script setup>
   import { ref, onMounted } from 'vue'
-  import { supabase } from './supabaseClient'
+  import { supabase } from './lib/supabaseClient'
 
   const countries = ref([])
 
