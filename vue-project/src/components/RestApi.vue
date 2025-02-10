@@ -1,18 +1,26 @@
 <template>
     <div>
       <h1>JSONPlaceholder API Calls</h1>
-      
+  
       <button @click="fetchPosts">Fetch Posts</button>
       <button @click="createPost">Create Post</button>
-      <button @click="updatePost">Update Post</button>
-      <button @click="deletePost">Delete Post</button>
   
       <div v-if="loading">Loading...</div>
       <div v-if="error">Error: {{ error }}</div>
   
       <ul>
-        <li v-for="post in posts" :key="post.id">{{ post.title }}</li>
+        <li v-for="post in posts" :key="post.id">
+          <span @click="selectPost(post)">{{ post.title }}</span>
+          <button @click="deletePost(post.id)">Delete</button>
+        </li>
       </ul>
+  
+      <div v-if="selectedPost">
+        <h2>Edit Post</h2>
+        <input v-model="selectedPost.title" placeholder="Edit title" />
+        <textarea v-model="selectedPost.body" placeholder="Edit content"></textarea>
+        <button @click="updatePost">Update Post</button>
+      </div>
     </div>
   </template>
   
@@ -23,6 +31,7 @@
   const posts = ref([]);
   const loading = ref(false);
   const error = ref(null);
+  const selectedPost = ref(null);
   const apiUrl = "https://jsonplaceholder.typicode.com/posts";
   
   // Function to fetch posts
@@ -66,26 +75,34 @@
     }
   };
   
-  // Function to update an existing post (ID: 1)
+  // Function to select a post for editing
+  const selectPost = (post) => {
+    selectedPost.value = { ...post };
+  };
+  
+  // Function to update a selected post
   const updatePost = async () => {
+    if (!selectedPost.value) return;
+  
     loading.value = true;
     error.value = null;
     try {
-      const response = await fetch(`${apiUrl}/1`, {
+      const response = await fetch(`${apiUrl}/${selectedPost.value.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: 1,
-          title: "Updated Post",
-          body: "Updated content",
-          userId: 1,
-        }),
+        body: JSON.stringify(selectedPost.value),
       });
   
       if (!response.ok) throw new Error("Failed to update post");
   
       const updatedPost = await response.json();
-      posts.value = posts.value.map((post) => (post.id === 1 ? updatedPost : post));
+  
+      // Update the local posts array
+      posts.value = posts.value.map((post) =>
+        post.id === updatedPost.id ? updatedPost : post
+      );
+  
+      selectedPost.value = null;
     } catch (err) {
       error.value = err.message;
     } finally {
@@ -93,16 +110,16 @@
     }
   };
   
-  // Function to delete a post (ID: 1)
-  const deletePost = async () => {
+  // Function to delete a post
+  const deletePost = async (postId) => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await fetch(`${apiUrl}/1`, { method: "DELETE" });
+      const response = await fetch(`${apiUrl}/${postId}`, { method: "DELETE" });
   
       if (!response.ok) throw new Error("Failed to delete post");
   
-      posts.value = posts.value.filter((post) => post.id !== 1);
+      posts.value = posts.value.filter((post) => post.id !== postId);
     } catch (err) {
       error.value = err.message;
     } finally {
