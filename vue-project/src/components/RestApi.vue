@@ -1,113 +1,135 @@
 <template>
     <div>
-      <h1>JSONPlaceholder API Calls</h1>
-      
-      <button @click="fetchPosts">Fetch Posts</button>
-      <button @click="createPost">Create Post</button>
-      <button @click="updatePost">Update Post</button>
-      <button @click="deletePost">Delete Post</button>
+      <h2>JSONPlaceholder API Demo</h2>
   
       <div v-if="loading">Loading...</div>
-      <div v-if="error">Error: {{ error }}</div>
+      <div v-if="error">{{ error }}</div>
   
+      <h3>Posts</h3>
       <ul>
-        <li v-for="post in posts" :key="post.id">{{ post.title }}</li>
+        <li v-for="post in posts" :key="post.id">
+          {{ post.title }} (ID: {{ post.id }})
+          <button @click="editPost(post)">Edit</button>
+          <button @click="deletePost(post.id)">Delete</button>
+        </li>
       </ul>
+  
+      <h3>Add New Post</h3>
+      <form @submit.prevent="addPost">
+        <input type="text" v-model="newPost.title" placeholder="Title" required><br>
+        <textarea v-model="newPost.body" placeholder="Body" required></textarea><br>
+        <button type="submit">Add Post</button>
+      </form>
+  
+      <div v-if="editingPost">
+        <h3>Edit Post</h3>
+        <form @submit.prevent="updatePost">
+          <input type="text" v-model="editPostData.title" placeholder="Title" required><br>
+          <textarea v-model="editPostData.body" placeholder="Body" required></textarea><br>
+          <button type="submit">Update Post</button>
+          <button @click="cancelEdit">Cancel</button>
+        </form>
+      </div>
     </div>
   </template>
   
   <script setup>
-  import { ref } from "vue";
+  import { ref, reactive, onMounted, computed } from 'vue';
+  import axios from 'axios';
   
-  // Reactive state variables
-  const posts = ref([]);
-  const loading = ref(false);
-  const error = ref(null);
-  const apiUrl = "https://jsonplaceholder.typicode.com/posts";
+//  export default {
+//    setup() {
+      const posts = ref([]);
+      const loading = ref(false);
+      const error = ref(null);
+      const newPost = reactive({ title: '', body: '' });
+      const editingPost = ref(false);
+      const editPostData = reactive({ title: '', body: '', id: null }); // Include ID
+      const selectedPost = ref(null);
   
-  // Function to fetch posts
-  const fetchPosts = async () => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await fetch(apiUrl);
-      if (!response.ok) throw new Error("Failed to fetch posts");
-      posts.value = await response.json();
-    } catch (err) {
-      error.value = err.message;
-    } finally {
-      loading.value = false;
-    }
-  };
   
-  // Function to create a new post
-  const createPost = async () => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: "New Post",
-          body: "This is a new post",
-          userId: 1,
-        }),
-      });
+      const fetchPosts = async () => {
+        loading.value = true;
+        error.value = null;
+        try {
+          const response = await axios.get('https://jsonplaceholder.typicode.com/posts');
+          posts.value = response.data;
+        } catch (err) {
+          error.value = err.message;
+        } finally {
+          loading.value = false;
+        }
+      };
   
-      if (!response.ok) throw new Error("Failed to create post");
+      const addPost = async () => {
+        try {
+          const response = await axios.post('https://jsonplaceholder.typicode.com/posts', newPost);
+          posts.value.push(response.data); // Add to the list
+          newPost.title = ''; // Clear form
+          newPost.body = '';
+        } catch (err) {
+          error.value = err.message;
+        }
+      };
   
-      const newPost = await response.json();
-      posts.value.push(newPost);
-    } catch (err) {
-      error.value = err.message;
-    } finally {
-      loading.value = false;
-    }
-  };
+      const deletePost = async (id) => {
+        try {
+          await axios.delete(`https://jsonplaceholder.typicode.com/posts/${id}`);
+          posts.value = posts.value.filter(post => post.id !== id); // Remove from list
+        } catch (err) {
+          error.value = err.message;
+        }
+      };
   
-  // Function to update an existing post (ID: 1)
-  const updatePost = async () => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await fetch(`${apiUrl}/1`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: 1,
-          title: "Updated Post",
-          body: "Updated content",
-          userId: 1,
-        }),
-      });
+      const editPost = (post) => {
+        editingPost.value = true;
+        editPostData.title = post.title;
+        editPostData.body = post.body;
+        editPostData.id = post.id; // Store the ID for the update
+        selectedPost.value = post; // Store the original post data
+      };
   
-      if (!response.ok) throw new Error("Failed to update post");
+      const updatePost = async () => {
+        try {
+          const response = await axios.put(`https://jsonplaceholder.typicode.com/posts/${editPostData.id}`, editPostData);
   
-      const updatedPost = await response.json();
-      posts.value = posts.value.map((post) => (post.id === 1 ? updatedPost : post));
-    } catch (err) {
-      error.value = err.message;
-    } finally {
-      loading.value = false;
-    }
-  };
+          // Update the post in the array (more efficient than a full refesh)
+           const index = posts.value.findIndex(p => p.id === editPostData.id);
+           if (index !== -1) {
+             posts.value[index] = response.data; // Update with the returned data
+           }
   
-  // Function to delete a post (ID: 1)
-  const deletePost = async () => {
-    loading.value = true;
-    error.value = null;
-    try {
-      const response = await fetch(`${apiUrl}/1`, { method: "DELETE" });
+          editingPost.value = false;
+          selectedPost.value = null;
+        } catch (err) {
+          error.value = err.message;
+        }
+      };
   
-      if (!response.ok) throw new Error("Failed to delete post");
+      const cancelEdit = () => {
+        editingPost.value = false;
+        editPostData.title = '';
+        editPostData.body = '';
+        editPostData.id = null;
+        selectedPost.value = null;
+      };
   
-      posts.value = posts.value.filter((post) => post.id !== 1);
-    } catch (err) {
-      error.value = err.message;
-    } finally {
-      loading.value = false;
-    }
-  };
+  
+      onMounted(fetchPosts);
+  
+      /* return {
+        posts,
+        loading,
+        error,
+        newPost,
+        addPost,
+        deletePost,
+        editPost,
+        updatePost,
+        editingPost,
+        editPostData,
+        cancelEdit,
+      }; */
+//    },
+//  };
   </script>
-  
