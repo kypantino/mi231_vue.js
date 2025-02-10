@@ -12,14 +12,17 @@
         <li v-for="post in posts" :key="post.id">
           <span @click="selectPost(post)">{{ post.title }}</span>
           <button @click="deletePost(post.id)">Delete</button>
+          <button @click="selectPost(post)">Edit</button>
         </li>
       </ul>
   
+      <!-- Edit Post Section -->
       <div v-if="selectedPost">
         <h2>Edit Post</h2>
         <input v-model="selectedPost.title" placeholder="Edit title" />
         <textarea v-model="selectedPost.body" placeholder="Edit content"></textarea>
         <button @click="updatePost">Update Post</button>
+        <button @click="cancelEdit">Cancel</button>
       </div>
     </div>
   </template>
@@ -108,6 +111,11 @@
     } finally {
       loading.value = false;
     }
+  };
+  
+  // Function to cancel editing
+  const cancelEdit = () => {
+    selectedPost.value = null;
   };
   
   // Function to delete a post
