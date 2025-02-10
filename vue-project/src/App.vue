@@ -8,6 +8,7 @@
   <food-item/>
   <food-item2/>
   <Personal-Profile/>
+  <Rest-Api/>
 </template>
 
 <script setup>
